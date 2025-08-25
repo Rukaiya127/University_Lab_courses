@@ -1,0 +1,80 @@
+// TASK 03: Keypad-controlled Temperature Alarm (LM35)
+// Keypad: R1..R4 -> 9,8,7,6  | C1..C4 -> 5,4,3,2
+// LCD: RS=12, E=11, D4=10, D5=A0, D6=A1, D7=A2
+// LM35 -> A3, Buzzer -> A4, LED -> A5
+#include <Keypad.h>
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(12, 11, 10, A0, A1, A2);
+
+const byte ROWS = 4, COLS = 4;
+char keys[ROWS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+byte rowPins[ROWS] = {9,8,7,6};
+byte colPins[COLS] = {5,4,3,2};
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+const int tempPin = A3;
+const int buzzer  = A4;
+const int ledPin  = A5;
+
+int threshold = 30;         // °C
+bool alarmEnable = false;
+
+int readTempC() {
+  int adc = analogRead(tempPin);
+  // 10mV per °C, ADC step ~4.88mV -> factor ≈ 0.488
+  return (int)(adc * 0.488f);
+}
+
+void setup() {
+  lcd.begin(16,2);
+  pinMode(buzzer, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  lcd.print("Temp Alarm");
+  lcd.setCursor(0,1);
+  lcd.print("3:Enable 4:Disable");
+}
+
+void loop() {
+  char key = keypad.getKey();
+  int t = readTempC();
+
+  lcd.setCursor(0,0);
+  lcd.print("Temp: "); lcd.print(t); lcd.print("C   ");
+  lcd.setCursor(0,1);
+  lcd.print("Th: "); lcd.print(threshold); lcd.print("   ");
+
+  if (key) {
+    switch (key) {
+      case '1':
+        // show current temperature (already shown)
+        break;
+      case '2':
+        threshold = t;
+        break;
+      case '3':
+        alarmEnable = true;
+        break;
+      case '4':
+        alarmEnable = false;
+        digitalWrite(buzzer, LOW);
+        digitalWrite(ledPin, LOW);
+        break;
+    }
+  }
+
+  if (alarmEnable && t > threshold) {
+    digitalWrite(buzzer, HIGH);
+    digitalWrite(ledPin, HIGH);
+  } else {
+    digitalWrite(buzzer, LOW);
+    digitalWrite(ledPin, LOW);
+  }
+
+  delay(300);
+}
